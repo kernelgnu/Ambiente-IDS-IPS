@@ -119,7 +119,3 @@ siem-environment/
 ## Contribuições
 Contribuições são bem-vindas! Para sugerir melhorias ou relatar problemas, abra uma issue ou envie um pull request.
 
----
-
-## Licença
-Este projeto está licenciado sob a [MIT License](LICENSE).
