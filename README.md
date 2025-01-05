@@ -1,121 +1,125 @@
-# Sistema de Detecção e Prevenção de Intrusões (IDS/IPS) com Snort e Kibana
+# Ambiente SIEM com ELK Stack
 
-## **Descrição**
-Este projeto implementa um sistema de detecção e prevenção de intrusões (IDS/IPS) utilizando o **Snort** para análise de tráfego de rede e o **Elastic Stack** (Elasticsearch, Logstash e Kibana) para visualização e monitoramento de alertas. O objetivo é criar um ambiente seguro capaz de detectar ameaças em tempo real e apresentar os dados de forma clara e centralizada.
-
----
-
-## **Pré-requisitos**
-- **Sistema operacional:** Ubuntu 22.04.
-- **Softwares necessários:**
-  - Snort
-  - Elasticsearch
-  - Logstash
-  - Kibana
-- **Ferramentas auxiliares:** 
-  - Nmap (para testes).
-- **Conhecimentos básicos:**
-  - Redes de computadores.
-  - Linha de comando no Linux.
+## Descrição
+Este projeto implementa um ambiente de SIEM (Security Information and Event Management) utilizando a ELK Stack (Elasticsearch, Logstash e Kibana). O objetivo é coletar, armazenar, analisar e visualizar eventos de segurança em tempo real, proporcionando maior visibilidade e controle sobre a infraestrutura de TI.
 
 ---
 
-## **Estrutura do Ambiente**
-- **Sistema Operacional:** Ubuntu 22.04.5 LTS
-- **Hardware:**
-  - CPU: Intel i5, 4 núcleos.
-  - Memória RAM: 8GB.
-  - Armazenamento: 50GB SSD.
-- **Rede:**
-  - Interface de rede configurada como `eth0`.
-  - IP local: `192.168.1.100/24`.
+## Funcionalidades
+- Coleta de logs de diferentes fontes (servidores, firewalls, IDS/IPS).
+- Armazenamento centralizado de eventos.
+- Dashboards personalizáveis para visualização de métricas e alertas.
+- Regras de alerta para atividades suspeitas ou maliciosas.
+- Integração com ferramentas como Suricata e Syslog.
 
 ---
 
-## **Instalação e Configuração**
+## Tecnologias Usadas
+- **Elasticsearch**: Armazenamento e busca de logs.
+- **Logstash**: Coleta e processamento de dados.
+- **Kibana**: Visualização e criação de dashboards.
+- **Beats**: Filebeat e Metricbeat para coleta de logs e métricas.
 
-### **1. Instalação do Snort**
-1. Atualize os pacotes:
+---
+
+## Como Usar
+
+### Pré-requisitos
+Certifique-se de ter:
+- Sistema operacional Linux (testado no Ubuntu).
+- Recursos de hardware adequados (mínimo 4 GB de RAM e 2 CPUs).
+- Acesso root para instalar pacotes.
+
+### Instalação
+
+1. Atualize o sistema:
    ```bash
    sudo apt update && sudo apt upgrade -y
-2. Instale o Snort:
+   ```
+
+2. Instale o Elasticsearch:
    ```bash
-   sudo apt install snort -y
-3. Configure o arquivo /etc/snort/snort.conf:
-   - Defina a rede interna:
-     ```bash
-     var HOME_NET 192.168.1.100/24
-   - Adicione o formato de saída JSON:
-     ```bash
-     output alert_json: filename snort_alerts.json
+   wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+   sudo apt install apt-transport-https
+   echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+   sudo apt update && sudo apt install elasticsearch
+   ```
+
+3. Configure e inicie o Elasticsearch:
+   ```bash
+   sudo nano /etc/elasticsearch/elasticsearch.yml
+   # Ajuste as configurações necessárias, como network.host
+   sudo systemctl start elasticsearch
+   sudo systemctl enable elasticsearch
+   ```
+
+4. Instale o Logstash:
+   ```bash
+   sudo apt install logstash
+   ```
+
+5. Configure o Logstash com um pipeline:
+   ```bash
+   sudo nano /etc/logstash/conf.d/logstash.conf
+   # Adicione as configurações para entrada (input), processamento (filter) e saída (output).
+   sudo systemctl start logstash
+   sudo systemctl enable logstash
+   ```
+
+6. Instale o Kibana:
+   ```bash
+   sudo apt install kibana
+   sudo systemctl start kibana
+   sudo systemctl enable kibana
+   ```
+
+7. Acesse o Kibana no navegador:
+   ```plaintext
+   http://<SEU_IP>:5601
+   ```
+
+8. Configure Beats (Filebeat/Metricbeat) nos dispositivos ou servidores que irão enviar logs para o SIEM.
 
 ---
 
-### **2. Configuração do Elastic Stack**
-2.1 Elasticsearch
-  1. Instale o Elasticsearch:
-     ```bash
-     sudo apt install elasticsearch -y
-  2. Inicie o serviço:
-     ```bash
-     sudo systemctl start elasticsearch
-     sudo systemctl enable elasticsearch
-2.2 Logstash
-  1. Instale o Logstash:
-     ```bash
-     sudo apt install logstash -y
-  2. Crie o pipeline em /etc/logstash/conf.d/snort.conf:
-     ```bash
-     input {
-        file {
-            path => "/var/log/snort/snort_alerts.json"
-            start_position => "beginning"
-            codec => "json"
-        }
-        }
-        filter {
-            if [alert] {
-                mutate {
-                    add_field => { "alert_message" => "%{[alert][signature]}" }
-                    rename => { "[alert][category]" => "category" }
-                }
-            }
-        }
-        output {
-            elasticsearch {
-                hosts => ["http://localhost:9200"]
-                index => "snort-alerts-%{+YYYY.MM.dd}"
-            }
-            stdout { codec => rubydebug }
-        }
-  3. Inicie o serviço:
-     ```bash
-     sudo systemctl start logstash
-2.3 Kibana
-  1. Instale o Kibana:
-     ```bash
-     sudo apt install kibana -y
-  2. Inicie o serviço:
-     ```bash
-     sudo systemctl start kibana
-     sudo systemctl enable kibana
-  3. Acesse o Kibana no navegador: http://localhost:5601.
+## Exemplo de Uso
+- Um ataque de força bruta identificado por Suricata gera logs que são enviados ao Logstash.
+- Logstash processa os dados e os envia para o Elasticsearch.
+- Kibana exibe um alerta em um painel de controle mostrando o número de tentativas de login falhas.
 
-### **3. Integração e visualização**
-1. Adicionar o índice no Kibana:
-   - Vá em Management > Index Patterns.
-   - Crie um padrão de índice: snort-alerts-*
-2. Criar dashboards:
-   - Contagem de alertas por categoria.
-   - Origem e destino dos ataques.
+---
 
-### **Testes**
-1. Scan de portas com Nmap:
-   ```bash
-   nmap -sS -p 22,80,443 192.168.1.1
-2. Ping ICMP:
-   ```bash
-   ping -c 4 8.8.8.8
-3. Confira os alertas no Kibana no painel de visualização ou no arquivo de log:
-   ```bash
-   cat /var/log/snort/snort_alerts.json
+## Estrutura do Projeto
+```plaintext
+siem-environment/
+├── elasticsearch/      # Configurações do Elasticsearch
+├── logstash/           # Configurações do Logstash
+├── kibana/             # Configurações do Kibana
+├── beats/              # Configurações do Filebeat e Metricbeat
+├── docs/               # Documentação e imagens
+└── README.md           # Este arquivo
+```
+
+---
+
+## Aprendizados
+- Configuração de um ambiente SIEM completo com ELK Stack.
+- Criação de pipelines para processamento de logs.
+- Configuração de dashboards e alertas personalizados no Kibana.
+
+---
+
+## Próximos Passos
+- Implementar regras de detecção específicas para ameaças comuns.
+- Automatizar a instalação com scripts Shell ou Ansible.
+- Adicionar integrações com outras ferramentas de segurança, como Wazuh.
+
+---
+
+## Contribuições
+Contribuições são bem-vindas! Para sugerir melhorias ou relatar problemas, abra uma issue ou envie um pull request.
+
+---
+
+## Licença
+Este projeto está licenciado sob a [MIT License](LICENSE).
